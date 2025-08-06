@@ -1,47 +1,43 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { sendSuccess, sendError } from '../utils/response';
-import { User, CreateUserRequest } from '../types';
-
-// リクエストスキーマ
-const createUserSchema = {
-  type: 'object',
-  required: ['name', 'email'],
-  properties: {
-    name: { type: 'string', minLength: 1 },
-    email: { type: 'string', format: 'email' }
-  }
-};
-
-// レスポンススキーマ
-const userResponseSchema = {
-  type: 'object',
-  properties: {
-    success: { type: 'boolean' },
-    data: {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        name: { type: 'string' },
-        email: { type: 'string' },
-        createdAt: { type: 'string' },
-        updatedAt: { type: 'string' }
-      }
-    },
-    message: { type: 'string' }
-  }
-};
+import { User, CreateUserRequest, UpdateUserRequest } from '../types';
+import { validateUserData, sendValidationError } from '../utils/validation';
+import {
+  createUserSchema,
+  updateUserSchema,
+  userResponseSchema,
+  usersResponseSchema,
+  userIdParamSchema,
+  errorResponseSchema
+} from '../schemas/userSchemas';
 
 // メモリ内のユーザーストレージ（学習用）
 const users: User[] = [];
 
 export default async function userRoutes(fastify: FastifyInstance) {
   // GET /users - ユーザー一覧取得
-  fastify.get('/users', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/users', {
+    schema: {
+      response: {
+        200: usersResponseSchema,
+        500: errorResponseSchema
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     sendSuccess(reply, users, 'Users retrieved successfully');
   });
 
   // GET /users/:id - 特定ユーザー取得
-  fastify.get('/users/:id', async (request: FastifyRequest<{
+  fastify.get('/users/:id', {
+    schema: {
+      params: userIdParamSchema,
+      response: {
+        200: userResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema
+      }
+    }
+  }, async (request: FastifyRequest<{
     Params: { id: string }
   }>, reply: FastifyReply) => {
     const { id } = request.params;
@@ -59,24 +55,35 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       body: createUserSchema,
       response: {
-        201: userResponseSchema
+        201: userResponseSchema,
+        400: errorResponseSchema,
+        409: errorResponseSchema,
+        500: errorResponseSchema
       }
     }
   }, async (request: FastifyRequest<{
     Body: CreateUserRequest
   }>, reply: FastifyReply) => {
-    const { name, email } = request.body;
+    const userData = request.body;
+    
+    // カスタムバリデーション
+    const validationErrors = validateUserData(userData);
+    if (validationErrors.length > 0) {
+      return sendValidationError(reply, validationErrors);
+    }
     
     // メールアドレスの重複チェック
-    const existingUser = users.find(u => u.email === email);
+    const existingUser = users.find(u => u.email === userData.email);
     if (existingUser) {
       return sendError(reply, 'Email already exists', 409);
     }
     
     const newUser: User = {
       id: Date.now().toString(),
-      name,
-      email,
+      name: userData.name,
+      email: userData.email,
+      age: userData.age,
+      phone: userData.phone,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -88,17 +95,28 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // PUT /users/:id - ユーザー更新
   fastify.put('/users/:id', {
     schema: {
-      body: createUserSchema,
+      params: userIdParamSchema,
+      body: updateUserSchema,
       response: {
-        200: userResponseSchema
+        200: userResponseSchema,
+        400: errorResponseSchema,
+        404: errorResponseSchema,
+        409: errorResponseSchema,
+        500: errorResponseSchema
       }
     }
   }, async (request: FastifyRequest<{
     Params: { id: string },
-    Body: CreateUserRequest
+    Body: UpdateUserRequest
   }>, reply: FastifyReply) => {
     const { id } = request.params;
-    const { name, email } = request.body;
+    const updateData = request.body;
+    
+    // カスタムバリデーション
+    const validationErrors = validateUserData(updateData);
+    if (validationErrors.length > 0) {
+      return sendValidationError(reply, validationErrors);
+    }
     
     const userIndex = users.findIndex(u => u.id === id);
     if (userIndex === -1) {
@@ -106,15 +124,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
     
     // メールアドレスの重複チェック（自分以外）
-    const existingUser = users.find(u => u.email === email && u.id !== id);
-    if (existingUser) {
-      return sendError(reply, 'Email already exists', 409);
+    if (updateData.email) {
+      const existingUser = users.find(u => u.email === updateData.email && u.id !== id);
+      if (existingUser) {
+        return sendError(reply, 'Email already exists', 409);
+      }
     }
     
+    // 部分更新
     users[userIndex] = {
       ...users[userIndex],
-      name,
-      email,
+      ...updateData,
       updatedAt: new Date()
     };
     
@@ -122,7 +142,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /users/:id - ユーザー削除
-  fastify.delete('/users/:id', async (request: FastifyRequest<{
+  fastify.delete('/users/:id', {
+    schema: {
+      params: userIdParamSchema,
+      response: {
+        200: userResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema
+      }
+    }
+  }, async (request: FastifyRequest<{
     Params: { id: string }
   }>, reply: FastifyReply) => {
     const { id } = request.params;

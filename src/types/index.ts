@@ -11,14 +11,26 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  age?: number;
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// リクエストボディ型
+// ユーザー作成リクエスト型
 export interface CreateUserRequest {
   name: string;
   email: string;
+  age?: number;
+  phone?: string;
+}
+
+// ユーザー更新リクエスト型
+export interface UpdateUserRequest {
+  name?: string;
+  email?: string;
+  age?: number;
+  phone?: string;
 }
 
 // 環境変数型
