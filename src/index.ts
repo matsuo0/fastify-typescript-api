@@ -3,6 +3,10 @@ import helmetPlugin from './plugins/helmet';
 import corsPlugin from './plugins/cors';
 import healthRoutes from './routes/health';
 import userRoutes from './routes/users';
+import dotenv from 'dotenv';
+
+// 環境変数の読み込み
+dotenv.config();
 
 // 環境変数の設定
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;

@@ -14,7 +14,12 @@
     "type": "git",
     "url": "git+https://github.com/matsuo0/fastify-typescript-api.git"
   },
-  "keywords": ["fastify", "typescript", "api", "learning"],
+  "keywords": [
+    "fastify",
+    "typescript",
+    "api",
+    "learning"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -25,6 +30,7 @@
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.1",
+    "dotenv": "^17.2.1",
     "fastify": "^5.4.0"
   },
   "devDependencies": {
