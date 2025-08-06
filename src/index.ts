@@ -3,6 +3,8 @@ import helmetPlugin from './plugins/helmet';
 import corsPlugin from './plugins/cors';
 import healthRoutes from './routes/health';
 import userRoutes from './routes/users';
+import databaseRoutes from './routes/database';
+import { initializeDatabase, closeDatabase } from './config/database';
 
 // 環境変数の設定
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -25,6 +27,7 @@ async function registerPlugins() {
 async function registerRoutes() {
   await fastify.register(healthRoutes, { prefix: '/api' });
   await fastify.register(userRoutes, { prefix: '/api' });
+  await fastify.register(databaseRoutes, { prefix: '/api' });
 }
 
 // エラーハンドラーの設定
@@ -58,6 +61,9 @@ fastify.setNotFoundHandler((request, reply) => {
 // アプリケーションの起動
 async function start() {
   try {
+    // データベースの初期化
+    initializeDatabase();
+    
     // プラグインとルートを登録
     await registerPlugins();
     await registerRoutes();
@@ -68,6 +74,7 @@ async function start() {
     console.log(`🚀 Server is running on http://${HOST}:${PORT}`);
     console.log(`📊 Health check: http://${HOST}:${PORT}/api/health`);
     console.log(`👥 Users API: http://${HOST}:${PORT}/api/users`);
+    console.log(`🗄️  Database: data/users.db`);
     
   } catch (err) {
     fastify.log.error(err);
@@ -79,12 +86,14 @@ async function start() {
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down server...');
   await fastify.close();
+  closeDatabase();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\n🛑 Shutting down server...');
   await fastify.close();
+  closeDatabase();
   process.exit(0);
 });
 
