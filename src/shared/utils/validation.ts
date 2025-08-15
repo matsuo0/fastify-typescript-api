@@ -58,4 +58,4 @@ export const sendValidationError = (
     error: 'Validation error',
     details: errors
   });
-}; 
+};

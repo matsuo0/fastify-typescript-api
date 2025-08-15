@@ -37,7 +37,7 @@ export default async function databaseRoutes(fastify: FastifyInstance) {
     }
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const stats = await getDatabaseStats();
+      const stats = getDatabaseStats();
       const responseData = {
         ...stats,
         timestamp: new Date().toISOString()

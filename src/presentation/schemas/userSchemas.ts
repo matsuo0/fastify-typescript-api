@@ -19,7 +19,7 @@ export const createUserSchema = {
     },
     phone: {
       type: 'string',
-      pattern: '^[\\+]?[0-9\\s\\-\\(\\)]{7,20}$'
+      pattern: '^[\\+]?[1-9][\\d]{0,15}$'
     }
   }
 };
@@ -44,7 +44,7 @@ export const updateUserSchema = {
     },
     phone: {
       type: 'string',
-      pattern: '^[\\+]?[0-9\\s\\-\\(\\)]{7,20}$'
+      pattern: '^[\\+]?[1-9][\\d]{0,15}$'
     }
   }
 };
@@ -122,4 +122,4 @@ export const errorResponseSchema = {
     }
   },
   required: ['success', 'error']
-}; 
+};

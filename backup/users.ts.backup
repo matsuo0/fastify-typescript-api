@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { sendSuccess, sendError } from '../utils/response';
-import { CreateUserRequest, UpdateUserRequest } from '../types';
+import { User, CreateUserRequest, UpdateUserRequest } from '../types';
 import { validateUserData, sendValidationError } from '../utils/validation';
 import {
   createUserSchema,
@@ -30,10 +30,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const users = await getAllUsers();
-      // エンティティをJSONに変換
-      const userData = users.map(user => user.toJSON());
-      sendSuccess(reply, userData, 'Users retrieved successfully');
+      const users = getAllUsers();
+      sendSuccess(reply, users, 'Users retrieved successfully');
     } catch (error) {
       fastify.log.error(error);
       return sendError(reply, 'Failed to retrieve users', 500);
@@ -55,13 +53,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }>, reply: FastifyReply) => {
     try {
       const { id } = request.params;
-      const user = await getUserById(id);
+      const user = getUserById(id);
       
       if (!user) {
         return sendError(reply, 'User not found', 404);
       }
       
-      sendSuccess(reply, user.toJSON(), 'User retrieved successfully');
+      sendSuccess(reply, user, 'User retrieved successfully');
     } catch (error) {
       fastify.log.error(error);
       return sendError(reply, 'Failed to retrieve user', 500);
@@ -92,13 +90,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       
       // メールアドレスの重複チェック
-      const existingUser = await getUserByEmail(userData.email);
+      const existingUser = getUserByEmail(userData.email);
       if (existingUser) {
         return sendError(reply, 'Email already exists', 409);
       }
       
-      const newUser = await createUser(userData);
-      sendSuccess(reply, newUser.toJSON(), 'User created successfully', 201);
+      const newUser = createUser(userData);
+      sendSuccess(reply, newUser, 'User created successfully', 201);
     } catch (error) {
       fastify.log.error(error);
       return sendError(reply, 'Failed to create user', 500);
@@ -134,18 +132,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
       
       // メールアドレスの重複チェック（自分以外）
       if (updateData.email) {
-        const existingUser = await getUserByEmail(updateData.email);
+        const existingUser = getUserByEmail(updateData.email);
         if (existingUser && existingUser.id !== id) {
           return sendError(reply, 'Email already exists', 409);
         }
       }
       
-      const updatedUser = await updateUser(id, updateData);
+      const updatedUser = updateUser(id, updateData);
       if (!updatedUser) {
         return sendError(reply, 'User not found', 404);
       }
       
-      sendSuccess(reply, updatedUser.toJSON(), 'User updated successfully');
+      sendSuccess(reply, updatedUser, 'User updated successfully');
     } catch (error) {
       fastify.log.error(error);
       return sendError(reply, 'Failed to update user', 500);
@@ -167,13 +165,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }>, reply: FastifyReply) => {
     try {
       const { id } = request.params;
-      const deletedUser = await deleteUser(id);
+      const deletedUser = deleteUser(id);
       
       if (!deletedUser) {
         return sendError(reply, 'User not found', 404);
       }
       
-      sendSuccess(reply, deletedUser.toJSON(), 'User deleted successfully');
+      sendSuccess(reply, deletedUser, 'User deleted successfully');
     } catch (error) {
       fastify.log.error(error);
       return sendError(reply, 'Failed to delete user', 500);
