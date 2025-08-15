@@ -34,4 +34,4 @@ export interface DatabaseStats {
   totalUsers: number;
   databasePath: string;
   timestamp: string;
-} 
+}

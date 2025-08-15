@@ -1,208 +1,71 @@
-import { getDatabase } from '../config/database';
-import { User, CreateUserRequest, UpdateUserRequest } from '../types';
+import { SqliteUserRepository } from '../infrastructure/database/SqliteUserRepository';
+import { User } from '../domain/entities/User';
+import { CreateUserRequest, UpdateUserRequest } from '../shared/types';
 
-// ユーザー関連のデータベース操作
+// 新しいリポジトリパターンを使用したデータベースユーティリティ
+const userRepository = new SqliteUserRepository();
 
 // 全ユーザーを取得
-export const getAllUsers = (): User[] => {
-  const db = getDatabase();
-  const stmt = db.prepare(`
-    SELECT 
-      id,
-      name,
-      email,
-      age,
-      phone,
-      created_at as createdAt,
-      updated_at as updatedAt
-    FROM users
-    ORDER BY created_at DESC
-  `);
-  
-  const rows = stmt.all() as any[];
-  
-  return rows.map(row => ({
-    id: row.id.toString(),
-    name: row.name,
-    email: row.email,
-    age: row.age,
-    phone: row.phone,
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt)
-  }));
+export const getAllUsers = async (): Promise<User[]> => {
+  return userRepository.findAll();
 };
 
 // IDでユーザーを取得
-export const getUserById = (id: string): User | null => {
-  const db = getDatabase();
-  const stmt = db.prepare(`
-    SELECT 
-      id,
-      name,
-      email,
-      age,
-      phone,
-      created_at as createdAt,
-      updated_at as updatedAt
-    FROM users
-    WHERE id = ?
-  `);
-  
-  const row = stmt.get(id) as any;
-  
-  if (!row) {
-    return null;
-  }
-  
-  return {
-    id: row.id.toString(),
-    name: row.name,
-    email: row.email,
-    age: row.age,
-    phone: row.phone,
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt)
-  };
+export const getUserById = async (id: string): Promise<User | null> => {
+  return userRepository.findById(id);
 };
 
 // メールアドレスでユーザーを取得
-export const getUserByEmail = (email: string): User | null => {
-  const db = getDatabase();
-  const stmt = db.prepare(`
-    SELECT 
-      id,
-      name,
-      email,
-      age,
-      phone,
-      created_at as createdAt,
-      updated_at as updatedAt
-    FROM users
-    WHERE email = ?
-  `);
-  
-  const row = stmt.get(email) as any;
-  
-  if (!row) {
-    return null;
-  }
-  
-  return {
-    id: row.id.toString(),
-    name: row.name,
-    email: row.email,
-    age: row.age,
-    phone: row.phone,
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt)
-  };
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  return userRepository.findByEmail(email);
 };
 
 // ユーザーを作成
-export const createUser = (userData: CreateUserRequest): User => {
-  const db = getDatabase();
-  const stmt = db.prepare(`
-    INSERT INTO users (name, email, age, phone)
-    VALUES (?, ?, ?, ?)
-  `);
-  
-  const result = stmt.run(
+export const createUser = async (userData: CreateUserRequest): Promise<User> => {
+  const user = User.create(
     userData.name,
     userData.email,
-    userData.age || null,
-    userData.phone || null
+    userData.age,
+    userData.phone
   );
   
-  // 作成されたユーザーを取得
-  const createdUser = getUserById(result.lastInsertRowid.toString());
-  
-  if (!createdUser) {
-    throw new Error('ユーザーの作成に失敗しました');
-  }
-  
-  return createdUser;
+  return userRepository.save(user);
 };
 
 // ユーザーを更新
-export const updateUser = (id: string, updateData: UpdateUserRequest): User | null => {
-  const db = getDatabase();
-  
-  // 更新するフィールドを動的に構築
-  const updateFields: string[] = [];
-  const values: any[] = [];
-  
+export const updateUser = async (id: string, updateData: UpdateUserRequest): Promise<User | null> => {
+  const existingUser = await userRepository.findById(id);
+  if (!existingUser) {
+    return null;
+  }
+
+  // 更新データを適用
   if (updateData.name !== undefined) {
-    updateFields.push('name = ?');
-    values.push(updateData.name);
+    existingUser.updateName(updateData.name);
   }
-  
   if (updateData.email !== undefined) {
-    updateFields.push('email = ?');
-    values.push(updateData.email);
+    existingUser.updateEmail(updateData.email);
   }
-  
   if (updateData.age !== undefined) {
-    updateFields.push('age = ?');
-    values.push(updateData.age);
+    existingUser.updateAge(updateData.age);
   }
-  
   if (updateData.phone !== undefined) {
-    updateFields.push('phone = ?');
-    values.push(updateData.phone);
+    existingUser.updatePhone(updateData.phone);
   }
-  
-  // updated_atを更新
-  updateFields.push('updated_at = CURRENT_TIMESTAMP');
-  
-  if (updateFields.length === 1) {
-    // updated_atのみの更新の場合は何もしない
-    return getUserById(id);
-  }
-  
-  const stmt = db.prepare(`
-    UPDATE users 
-    SET ${updateFields.join(', ')}
-    WHERE id = ?
-  `);
-  
-  values.push(id);
-  const result = stmt.run(...values);
-  
-  if (result.changes === 0) {
-    return null; // ユーザーが見つからない
-  }
-  
-  return getUserById(id);
+
+  return userRepository.update(id, existingUser);
 };
 
 // ユーザーを削除
-export const deleteUser = (id: string): User | null => {
-  const db = getDatabase();
-  
-  // 削除前にユーザー情報を取得
-  const user = getUserById(id);
-  if (!user) {
-    return null;
-  }
-  
-  const stmt = db.prepare('DELETE FROM users WHERE id = ?');
-  const result = stmt.run(id);
-  
-  if (result.changes === 0) {
-    return null;
-  }
-  
-  return user;
+export const deleteUser = async (id: string): Promise<User | null> => {
+  return userRepository.delete(id);
 };
 
 // データベースの統計情報を取得
-export const getDatabaseStats = () => {
-  const db = getDatabase();
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM users');
-  const result = stmt.get() as { count: number };
-  
+export const getDatabaseStats = async () => {
+  const count = await userRepository.count();
   return {
-    totalUsers: result.count,
-    databasePath: db.name
+    totalUsers: count,
+    databasePath: 'data/users.db'
   };
 }; 

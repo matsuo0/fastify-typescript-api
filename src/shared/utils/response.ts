@@ -27,4 +27,4 @@ export const sendError = (
     error,
   };
   reply.status(statusCode).send(response);
-}; 
+};
